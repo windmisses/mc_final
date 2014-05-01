@@ -1,8 +1,0 @@
-Exception in thread "Thread-1" java.lang.NullPointerException
-	at SegmentTree.find(SegmentTree.java:65)
-	at SegmentTree.find(SegmentTree.java:65)
-	at SegmentTree.find(SegmentTree.java:65)
-	at SegmentTree.find(SegmentTree.java:63)
-	at ParallelLookUpTable.check(LookUpTable.java:206)
-	at ParallelPacketWorker.run(PacketWorker.java:93)
-	at java.lang.Thread.run(Thread.java:744)
