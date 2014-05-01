@@ -31,7 +31,6 @@ class SerialPacketWorker implements PacketWorker {
             totalPackets++;
             pkt = source.getPacket();
 
-
             if (pkt.type == Packet.MessageType.ConfigPacket) {                                        
                 Config config = pkt.config;
                 int address = config.address;
@@ -82,7 +81,7 @@ class ParallelPacketWorker implements PacketWorker {
     	    try {
                 pkt = queue.deq();
                 totalPackets++;
-
+                
                 if (pkt.type == Packet.MessageType.ConfigPacket) {                                        
                     Config config = pkt.config;
                     int address = config.address;

@@ -133,7 +133,7 @@ class SerialLookUpTable implements LookUpTable {
 }
 
 class ParallelLookUpTable implements LookUpTable {    
-    ConcurrentHashMap<Integer, Integer> list;
+    //ConcurrentHashMap<Integer, Integer> list;
 
     //ReentrantLock[] lock; 
 
@@ -155,9 +155,10 @@ class ParallelLookUpTable implements LookUpTable {
         }
 
         count = 0;
-        list = new ConcurrentHashMap<Integer, Integer>();
+        //list = new ConcurrentHashMap<Integer, Integer>();
     }
 
+    /*
     public int findHashKey(int address) {
          Integer key = list.get(address);
 
@@ -169,6 +170,7 @@ class ParallelLookUpTable implements LookUpTable {
 
          return key;
     }
+    */
     
     @Atomic
     public void change(int address, int start, int end, boolean validSource, boolean acceptingRange) {

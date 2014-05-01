@@ -73,8 +73,8 @@ class ParallelFireWall {
     final float acceptingFraction = Float.parseFloat(args[10]);
     final int numWorkers = Integer.parseInt(args[11]); 
 
-    //final int queueDepth = 256 / numWorkers;
-    final int queueDepth = 8;
+    final int queueDepth = 256 / numWorkers;
+    //final int queueDepth = 8;
 
     StopWatch timer = new StopWatch();
     PacketGenerator source = new PacketGenerator(numAddressesLog, numTrainsLog, meanTrainSize, meanTrainsPerComm, meanWindow,

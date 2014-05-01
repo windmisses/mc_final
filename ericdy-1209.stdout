@@ -1,0 +1,6 @@
+count 1429427 time 2001
+ Thread 0 work : 14632/530587
+ Thread 1 work : 1707/63303
+ Thread 2 work : 8515/304161
+ Thread 3 work : 14304/531248
+check failure: 2001

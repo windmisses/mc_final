@@ -30,8 +30,8 @@ class SegmentTree {
 
         if (x <= this.l && this.r <= y) {
             this.cover = c;
-            this.left = null;
-            this.right = null;
+            //this.left = null;
+            //this.right = null;
             return;
         }
 
@@ -48,8 +48,8 @@ class SegmentTree {
 
         if (this.left.cover != 0 && this.left.cover == this.right.cover) {
             this.cover = this.left.cover;
-            this.left = null;
-            this.right = null;
+            //this.left = null;
+            //this.right = null;
         }
     }
 
