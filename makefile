@@ -1,6 +1,6 @@
 JFLAGS= 
-JC= $(JAVA_HOME)"/bin/javac"
-#JC= javac
+#JC= $(JAVA_HOME)"/bin/javac"
+JC= javac
 .SUFFIXES: .java .class
 .java.class:
 	$(JC) $(JFLAGS) $*.java
