@@ -23,8 +23,8 @@ class SerialLookUpTable implements LookUpTable {
     int n;
 
     boolean tableUsed = false;
-    boolean SkipListUsed = true;
-    boolean SegmentTreeUsed = false;
+    boolean SkipListUsed = false;
+    boolean SegmentTreeUsed = true;
 
     int add = 0, sum = 0;
     
@@ -133,9 +133,11 @@ class SerialLookUpTable implements LookUpTable {
         }
 
         if (SegmentTreeUsed) {
+            /*
             if (tree[dest].find(start) != table[dest][start]) {                 
                 System.out.println("error tree!");
             }
+            */
             return tree[dest].find(start);        
         }
         
@@ -162,9 +164,13 @@ class ParallelLookUpTable implements LookUpTable {
     boolean[] source;
     SegmentTree[] tree;
     SkipList[] list;
-    int count;
     int n;
     
+    boolean tableUsed = false;
+    boolean SkipListUsed = true;
+    boolean SegmentTreeUsed = false;
+    boolean usedLock = false;
+
     public ParallelLookUpTable(int numAddressesLog) {
         n = 1 << numAddressesLog;
         source = new boolean[n];
@@ -173,8 +179,10 @@ class ParallelLookUpTable implements LookUpTable {
         lock = new ReentrantLock[n];
 
         for (int i = 0; i < n; i++) {
-            tree[i] = new SegmentTree(0, n - 1);
-            list[i] = new SkipList(SkipList_Max_Level);
+            if (SegmentTreeUsed)
+                tree[i] = new SegmentTree(0, n - 1);
+            if (SkipListUsed)
+                list[i] = new SkipList(SkipList_Max_Level);
             source[i] = false;
             lock[i] = new ReentrantLock();
         }
@@ -184,33 +192,45 @@ class ParallelLookUpTable implements LookUpTable {
     public void change(int address, int start, int end, boolean validSource, boolean acceptingRange) {
         int key = address;
         
-        lock[key].lock();
+        if (usedLock)
+            lock[key].lock();
 
         if (!validSource) 
             source[key] = true;
         else
             source[key] = false;
+        
+        if (SkipListUsed) {
+            list[key].change(start, end - 1, acceptingRange);
+        }
+        
+        if (SegmentTreeUsed) {
+            if (acceptingRange)
+                tree[key].insert(start,end - 1,1); 
+            else
+                tree[key].insert(start,end - 1,-1);
+        }
 
-        list[key].change(start, end - 1, acceptingRange);
-        /*
-        if (acceptingRange)
-            tree[key].insert(start,end - 1,1); 
-        else
-            tree[key].insert(start,end - 1,-1);
-        */
-
-        lock[key].unlock();
+        if (usedLock)
+            lock[key].unlock();
     }
  
     public boolean check(int start, int dest) {
-        lock[start].lock();
+        if (usedLock)
+            lock[start].lock();
         boolean ret = source[start];
-        lock[start].unlock();
+        if (usedLock)
+            lock[start].unlock();
         if (!ret) return false;
         
-        lock[dest].lock();
-        ret = list[dest].check(start);
-        lock[dest].unlock();
+        if (usedLock)
+            lock[dest].lock();
+        if (SkipListUsed)
+            ret = list[dest].check(start);
+        if (SegmentTreeUsed)
+            ret = tree[dest].find(start);
+        if (usedLock)
+            lock[dest].unlock();
 
         return ret;
     }

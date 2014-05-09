@@ -39,7 +39,7 @@ class SkipList {
         Node pred = head;
         for (int level = Max_Level; level >= 0; level--) {
             Node curr = pred.next[level];
-            while (key > curr.right) {
+            while (key > curr.right && curr.next != null) {
                 pred = curr;
                 curr = pred.next[level];
             }
