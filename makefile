@@ -1,6 +1,6 @@
 JFLAGS= 
-JC= $(JAVA_HOME)"/bin/javac"
-#JC= javac
+#JC= $(JAVA_HOME)"/bin/javac"
+JC= javac
 .SUFFIXES: .java .class
 .java.class:
 	$(JC) $(JFLAGS) $*.java
@@ -13,7 +13,9 @@ CLASSES = \
 	RandomGenerator.java \
         PacketGenerator.java \
         SegmentTree.java \
+        SkipList.java \
 	LookUpTable.java \
+        Histogram.java \
 	PacketWorker.java \
         PacketDispatcher.java \
 	FireWallTest.java \

@@ -8,103 +8,102 @@ public interface LookUpTable {
 
     public boolean check(int src, int des);
 
-    public void check();
+    public void debug();
 }
 
 class SerialLookUpTable implements LookUpTable {
     
-    HashMap<Integer, Integer> list;
+    final int SkipList_Max_Level = 5;
 
     boolean[] source;
+    SkipList[] list;
     SegmentTree[] tree;
-    //boolean[][] table;
+    boolean[][] table;
     int count;
     int n;
+
+    boolean tableUsed = false;
+    boolean SkipListUsed = true;
+    boolean SegmentTreeUsed = false;
 
     int add = 0, sum = 0;
     
     public SerialLookUpTable(int numAddressesLog) {
         n = 1 << numAddressesLog;
         source = new boolean[n];
-        tree = new SegmentTree[n];
 
+        if (SkipListUsed) {
+            list = new SkipList[n];
+
+            for (int i = 0; i < n; i++) {
+                list[i] = new SkipList(SkipList_Max_Level);
+            }
+        }
+        
+        if (SegmentTreeUsed) {
+            tree = new SegmentTree[n];
+            
+            for (int i = 0; i < n; i++) {
+                tree[i] = new SegmentTree(0, n - 1, -1);
+            }
+        }
+        
         for (int i = 0; i < n; i++) {
-            tree[i] = new SegmentTree(0, n - 1, -1);
             source[i] = false;
         }
 
-        /*
-        table = new boolean[n][n];
-        for (int i = 0; i < n; i++)
-            for (int j = 0; j < n; j++)
-                table[i][j] = false;
-        */
-
-        count = 0;
-        list = new HashMap<Integer, Integer>();
+        if (tableUsed) {
+            table = new boolean[n][n];
+            for (int i = 0; i < n; i++)
+                for (int j = 0; j < n; j++)
+                    table[i][j] = false;
+        }
     }
 
-    public int findHashKey(int address) {
-         Integer key = list.get(address);
-
-         if (key == null) {
-            count++;
-            list.put(address, count);
-            key = count;
-         }
-
-         return key;
-    }
-    
     public void change(int address, int start, int end, boolean validSource, boolean acceptingRange) {
-        //int key = findHashKey(address);
         int key = address;
 
-        if (validSource) 
+        if (!validSource) 
             source[key] = true;
         else
             source[key] = false;
         
-        /*
-        int add = 0;
-        for (int i = start; i < end; i++) {
-            if (table[key][i] == false)
-                add++;
-            table[key][i] = acceptingRange;
+        if (tableUsed) {            
+            for (int i = start; i < end; i++) {                
+                table[key][i] = acceptingRange;
+            }
         }
-        sum = sum + add;
-        System.out.println(add);
-        */
 
-        if (acceptingRange)
-            tree[key].insert(start,end - 1, 1); 
-        else
-            tree[key].insert(start,end - 1, -1);
+        if (SkipListUsed) {
+            list[key].change(start, end - 1, acceptingRange);
+        }
 
+        if (SegmentTreeUsed) {
+            if (acceptingRange) 
+                tree[key].insert(start,end - 1, 1); 
+            else 
+                tree[key].insert(start,end - 1, -1);
+        }
+        
         /*
         boolean ok = true;
         for (int i = 0; i < n; i++)
-            if (tree[key].find(i) != table[key][i])
+            if (list[key].check(i) != table[key][i])
                 ok = false;
 
-        //System.out.println(address + " " + start + " " + end + " " + validSource + " " + acceptingRange);
+        System.out.println(address + " " + start + " " + end + " " + validSource + " " + acceptingRange);
         if (!ok) {            
             for (int i = 0; i < n; i++) 
-                System.out.println(i + " " + tree[key].find(i) + " " + table[key][i]);
+                System.out.println(i + " " + list[key].check(i) + " " + table[key][i]);
             try {
                 System.in.read();
             } catch (Exception ignore) {;}
-        }
+        } 
         */
     }
    
 
     public boolean check(int start, int dest) {
-        //int src = findHashKey(start);
-        //int des = findHashKey(dest);
-
-        //System.out.println(start + " " + dest);
-
         if (!source[start]) return false;
         
         //System.out.println("ok");
@@ -116,11 +115,34 @@ class SerialLookUpTable implements LookUpTable {
                 System.out.println(i + " " + tree[dest].find(i) + " " + table[dest][i]);
         }
         */
+        
+        if (SkipListUsed) {
+            /*
+            if (list[dest].check(start) != table[dest][start]) {
+                System.out.println("error skip!");
 
-        return tree[dest].find(start);        
+                for (int i = 0; i < n; i++) 
+                    System.out.println(i + " " + list[dest].check(i) + " " + table[dest][i]);
+
+                try {
+                    System.in.read();
+                } catch (Exception ignore) {;}
+            }
+            */
+            return list[dest].check(start);
+        }
+
+        if (SegmentTreeUsed) {
+            if (tree[dest].find(start) != table[dest][start]) {                 
+                System.out.println("error tree!");
+            }
+            return tree[dest].find(start);        
+        }
+        
+        return false;
     }
 
-    public void check() {
+    public void debug() {
         /*
         int cnt = 0;
         for (int i = 0; i < n; i++)
@@ -133,12 +155,13 @@ class SerialLookUpTable implements LookUpTable {
 }
 
 class ParallelLookUpTable implements LookUpTable {    
-    //ConcurrentHashMap<Integer, Integer> list;
+    final int SkipList_Max_Level = 5;
 
-    //ReentrantLock[] lock; 
+    ReentrantLock[] lock; 
 
     boolean[] source;
     SegmentTree[] tree;
+    SkipList[] list;
     int count;
     int n;
     
@@ -146,70 +169,53 @@ class ParallelLookUpTable implements LookUpTable {
         n = 1 << numAddressesLog;
         source = new boolean[n];
         tree = new SegmentTree[n];
-        //lock = new ReentrantLock[n];
+        list = new SkipList[n];
+        lock = new ReentrantLock[n];
 
         for (int i = 0; i < n; i++) {
             tree[i] = new SegmentTree(0, n - 1);
+            list[i] = new SkipList(SkipList_Max_Level);
             source[i] = false;
-            //lock[i] = new ReentrantLock();
+            lock[i] = new ReentrantLock();
         }
-
-        count = 0;
-        //list = new ConcurrentHashMap<Integer, Integer>();
     }
-
-    /*
-    public int findHashKey(int address) {
-         Integer key = list.get(address);
-
-         if (key == null) {
-            count++;
-            list.put(address, count);
-            key = count;
-         }
-
-         return key;
-    }
-    */
     
     @Atomic
     public void change(int address, int start, int end, boolean validSource, boolean acceptingRange) {
-        //int key = findHashKey(address);
         int key = address;
         
-        //lock[key].lock();
-        //System.out.println(address + " " + start + " " + end + " " + validSource + " " + acceptingRange);
+        lock[key].lock();
 
-        if (validSource) 
+        if (!validSource) 
             source[key] = true;
         else
             source[key] = false;
 
+        list[key].change(start, end - 1, acceptingRange);
+        /*
         if (acceptingRange)
             tree[key].insert(start,end - 1,1); 
         else
             tree[key].insert(start,end - 1,-1);
+        */
 
-        //lock[key].unlock();
+        lock[key].unlock();
     }
  
     public boolean check(int start, int dest) {
-        //int src = findHashKey(start);
-        //int des = findHashKey(dest);
-        
-        //lock[start].lock();
+        lock[start].lock();
         boolean ret = source[start];
-        //lock[start].unlock();
+        lock[start].unlock();
         if (!ret) return false;
         
-        //lock[dest].lock();
-        ret = tree[dest].find(start);
-        //lock[dest].unlock();
+        lock[dest].lock();
+        ret = list[dest].check(start);
+        lock[dest].unlock();
 
         return ret;
     }
 
 
-    public void check() {
+    public void debug() {
     }
 }

@@ -9,6 +9,7 @@ class SerialPacketWorker implements PacketWorker {
     PaddedPrimitiveNonVolatile<Boolean> done;
     final PacketGenerator source;
     final SerialLookUpTable table;
+    final Histogram histogram;
     long totalPackets = 0;
     long residue = 0;
     long checkOK = 0;
@@ -17,10 +18,13 @@ class SerialPacketWorker implements PacketWorker {
     public SerialPacketWorker(
             PaddedPrimitiveNonVolatile<Boolean> done, 
             PacketGenerator source,
-            SerialLookUpTable table) {
+            SerialLookUpTable table,
+            Histogram histogram) {
         this.done = done;
         this.source = source;
         this.table = table;
+        this.histogram = histogram;
+
         fingerprint = new Fingerprint();
     }
   
@@ -30,6 +34,7 @@ class SerialPacketWorker implements PacketWorker {
         while( !done.value || !ok ) {
             totalPackets++;
             pkt = source.getPacket();
+
 
             if (pkt.type == Packet.MessageType.ConfigPacket) {                                        
                 Config config = pkt.config;
@@ -48,7 +53,9 @@ class SerialPacketWorker implements PacketWorker {
                 if (table.check(src, des)) {
                     //ok = true;
                     checkOK++;
-                    residue += fingerprint.getFingerprint(pkt.body.iterations, pkt.body.seed);
+                    int ret = (int)fingerprint.getFingerprint(pkt.body.iterations, pkt.body.seed);
+                    residue += ret;
+                    histogram.insert(ret);
                 }
             }
         }
@@ -59,6 +66,7 @@ class ParallelPacketWorker implements PacketWorker {
     PaddedPrimitiveNonVolatile<Boolean> done;
     ParallelLookUpTable table;
     LamportQueue<Packet> queue;
+    Histogram histogram;
     long totalPackets = 0;
     long residue = 0;
     long checkOK = 0;
@@ -67,11 +75,14 @@ class ParallelPacketWorker implements PacketWorker {
     public ParallelPacketWorker(  		
   	    PaddedPrimitiveNonVolatile<Boolean> done, 
     	    ParallelLookUpTable table,
-    	    LamportQueue<Packet> queue
+    	    LamportQueue<Packet> queue,
+            Histogram histogram
     	    ) {
         this.done = done;
         this.table = table;
         this.queue = queue;
+        this.histogram = histogram;
+
         fingerprint = new Fingerprint();
     }
   
@@ -81,7 +92,7 @@ class ParallelPacketWorker implements PacketWorker {
     	    try {
                 pkt = queue.deq();
                 totalPackets++;
-                
+
                 if (pkt.type == Packet.MessageType.ConfigPacket) {                                        
                     Config config = pkt.config;
                     int address = config.address;
@@ -92,7 +103,9 @@ class ParallelPacketWorker implements PacketWorker {
 
                     if (table.check(src, des)) {
                         checkOK++;
-                        residue += fingerprint.getFingerprint(pkt.body.iterations, pkt.body.seed);
+                        int ret = (int)fingerprint.getFingerprint(pkt.body.iterations, pkt.body.seed);
+                        residue += ret;
+                        histogram.insert(ret);
                     }
                 }
     	    } catch (EmptyException e) {;}

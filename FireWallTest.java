@@ -20,6 +20,7 @@ class SerialFireWall {
 
     // prepare
     SerialLookUpTable table = new SerialLookUpTable(numAddressesLog);
+    Histogram histogram = new Histogram();
 
     for (int i = 0; i < (1 << (numAddressesLog / 2 * 3)); i++) {
         Packet pkt = source.getConfigPacket();
@@ -31,10 +32,9 @@ class SerialFireWall {
         //System.out.println(i);
     }
 
-    table.check();
     // end prepare
 
-    SerialPacketWorker workerData = new SerialPacketWorker(done, source, table);
+    SerialPacketWorker workerData = new SerialPacketWorker(done, source, table, histogram);
     Thread workerThread = new Thread(workerData);
 
     workerThread.start();
@@ -73,8 +73,8 @@ class ParallelFireWall {
     final float acceptingFraction = Float.parseFloat(args[10]);
     final int numWorkers = Integer.parseInt(args[11]); 
 
-    final int queueDepth = 256 / numWorkers;
-    //final int queueDepth = 8;
+    //final int queueDepth = 256 / numWorkers;
+    final int queueDepth = 8;
 
     StopWatch timer = new StopWatch();
     PacketGenerator source = new PacketGenerator(numAddressesLog, numTrainsLog, meanTrainSize, meanTrainsPerComm, meanWindow,
@@ -90,6 +90,7 @@ class ParallelFireWall {
    
     // prepare
     ParallelLookUpTable table = new ParallelLookUpTable(numAddressesLog);
+    Histogram histogram = new Histogram();
 
     for (int i = 0; i < (1 << (numAddressesLog / 2 * 3)); i++) {
         Packet pkt = source.getConfigPacket();
@@ -105,7 +106,7 @@ class ParallelFireWall {
     ParallelPacketWorker[] workerDatas = new ParallelPacketWorker[numWorkers];
 
     for (int i = 0; i < numWorkers; i++) {
-        workerDatas[i] = new ParallelPacketWorker(doneWork, table, queue[i]);
+        workerDatas[i] = new ParallelPacketWorker(doneWork, table, queue[i], histogram);
     }
 
     Thread[] workerThread = new Thread[numWorkers];
