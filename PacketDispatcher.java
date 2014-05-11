@@ -72,13 +72,14 @@ class ParallelPacketDispatcher implements PacketDispatcher {
                                 ok = true;
                             } catch (FullException e) {;}
                         }
-                        id = (id + 1) % numWorkers;
+                        if (numWorkers > 0)
+                            id = (id + 1) % numWorkers;
                     
                         if (!ok) {
                             numPackets++;
                             int ret = (int)fingerprint.getFingerprint(pkt.body.iterations, pkt.body.seed);
                             residue += ret;
-                            histogram.insert(ret);
+                            //histogram.insert(ret);
                         }
                     }
                 }

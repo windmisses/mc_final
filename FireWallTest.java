@@ -75,7 +75,7 @@ class ParallelFireWall {
 
     //final int queueDepth = 256 / numWorkers;
     final int queueDepth = 8;
-    final boolean spm = true;
+    final boolean spm = false;
 
     StopWatch timer = new StopWatch();
     PacketGenerator source = new PacketGenerator(numAddressesLog, numTrainsLog, meanTrainSize, meanTrainsPerComm, meanWindow,
@@ -107,6 +107,7 @@ class ParallelFireWall {
         //System.out.println(address);
         table.change(address, config.addressBegin, config.addressEnd, config.personaNonGrata, config.acceptingRange);
     }
+    System.out.println("End initialization");
     // end prepare
 
     ParallelPacketDispatcher dispatcher = new ParallelPacketDispatcher(done, source, numWorkers, queue, table, histogram, spm);

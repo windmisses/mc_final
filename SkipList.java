@@ -73,7 +73,10 @@ class SkipList {
     }
 
     void insert(int left, int right) {        
-        int level = rand.nextInt(Max_Level + 1);
+        int level = 0;
+        while (level < Max_Level && rand.nextDouble() < 0.5)
+            level++;
+        //int level = rand.nextInt(Max_Level + 1);
 
         Node curr = new Node(left, right, level);
 

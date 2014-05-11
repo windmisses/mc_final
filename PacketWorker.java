@@ -30,8 +30,7 @@ class SerialPacketWorker implements PacketWorker {
   
     public void run() {
         Packet pkt;
-        boolean ok = true;
-        while( !done.value || !ok ) {
+        while( !done.value ) {
             totalPackets++;
             pkt = source.getPacket();
 
@@ -44,17 +43,10 @@ class SerialPacketWorker implements PacketWorker {
                 int src = pkt.header.source;
                 int des = pkt.header.dest;
 
-                //System.out.println(src + " " + des);
-
-                //Random rand = new Random();
-                //src = rand.nextInt(1024);
-                //des = rand.nextInt(1024);
-                                
                 if (table.check(src, des)) {
-                    //ok = true;
                     checkOK++;
-                    //int ret = (int)fingerprint.getFingerprint(pkt.body.iterations, pkt.body.seed);
-                    //residue += ret;
+                    int ret = (int)fingerprint.getFingerprint(pkt.body.iterations, pkt.body.seed);
+                    residue += ret;
                     //histogram.insert(ret);
                 }
             }
@@ -105,12 +97,13 @@ class ParallelPacketWorker implements PacketWorker {
                     } else {
                         int src = pkt.header.source;
                         int des = pkt.header.dest;
-
+                        
+                        //table.check(src,des);
                         if (table.check(src, des)) {
                             checkOK++;
                             int ret = (int)fingerprint.getFingerprint(pkt.body.iterations, pkt.body.seed);
                             residue += ret;
-                            histogram.insert(ret);
+                            //histogram.insert(ret);
                         }
                     }
                 } else {                    
@@ -119,7 +112,7 @@ class ParallelPacketWorker implements PacketWorker {
 
                     int ret = (int)fingerprint.getFingerprint(pkt.body.iterations, pkt.body.seed);
                     residue += ret;
-                    histogram.insert(ret);
+                    //histogram.insert(ret);
                 }
     	    } catch (EmptyException e) {;}
     }    

@@ -13,7 +13,7 @@ public interface LookUpTable {
 
 class SerialLookUpTable implements LookUpTable {
     
-    final int SkipList_Max_Level = 5;
+    final int SkipList_Max_Level;
 
     boolean[] source;
     SkipList[] list;
@@ -23,12 +23,14 @@ class SerialLookUpTable implements LookUpTable {
     int n;
 
     boolean tableUsed = false;
-    boolean SkipListUsed = false;
-    boolean SegmentTreeUsed = true;
+    boolean SkipListUsed = true;
+    boolean SegmentTreeUsed = false;
 
     int add = 0, sum = 0;
     
     public SerialLookUpTable(int numAddressesLog) {
+        SkipList_Max_Level = numAddressesLog / 2;
+
         n = 1 << numAddressesLog;
         source = new boolean[n];
 
@@ -157,7 +159,7 @@ class SerialLookUpTable implements LookUpTable {
 }
 
 class ParallelLookUpTable implements LookUpTable {    
-    final int SkipList_Max_Level = 5;
+    final int SkipList_Max_Level;
 
     ReentrantLock[] lock; 
 
@@ -169,9 +171,11 @@ class ParallelLookUpTable implements LookUpTable {
     boolean tableUsed = false;
     boolean SkipListUsed = true;
     boolean SegmentTreeUsed = false;
-    boolean usedLock = false;
+    boolean usedLock = true;
 
     public ParallelLookUpTable(int numAddressesLog) {
+        SkipList_Max_Level = numAddressesLog / 2;
+
         n = 1 << numAddressesLog;
         source = new boolean[n];
         tree = new SegmentTree[n];
