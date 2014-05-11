@@ -62,7 +62,7 @@ class ParallelPacketDispatcher implements PacketDispatcher {
                 } else {
                     int src = pkt.header.source;
                     int des = pkt.header.dest;
-
+                    
                     if (table.check(src, des)) {
                         checkOK++;
                         boolean ok = false;

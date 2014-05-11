@@ -1,5 +1,6 @@
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.*;
 import java.util.concurrent.locks.*;
 import org.deuce.Atomic;
 
@@ -172,6 +173,9 @@ class ParallelLookUpTable implements LookUpTable {
     boolean SkipListUsed = true;
     boolean SegmentTreeUsed = false;
     boolean usedLock = true;
+    boolean cache = true;
+
+    ConcurrentHashMap<Integer, Boolean>[] hash;
 
     public ParallelLookUpTable(int numAddressesLog) {
         SkipList_Max_Level = numAddressesLog / 2;
@@ -181,6 +185,7 @@ class ParallelLookUpTable implements LookUpTable {
         tree = new SegmentTree[n];
         list = new SkipList[n];
         lock = new ReentrantLock[n];
+        hash = new ConcurrentHashMap[n];
 
         for (int i = 0; i < n; i++) {
             if (SegmentTreeUsed)
@@ -189,6 +194,8 @@ class ParallelLookUpTable implements LookUpTable {
                 list[i] = new SkipList(SkipList_Max_Level);
             source[i] = false;
             lock[i] = new ReentrantLock();
+
+            hash[i] = new ConcurrentHashMap<Integer, Boolean>();
         }
     }
     
@@ -214,19 +221,32 @@ class ParallelLookUpTable implements LookUpTable {
             else
                 tree[key].insert(start,end - 1,-1);
         }
+        if (cache)
+            hash[key] = new ConcurrentHashMap<Integer, Boolean>();
 
         if (usedLock)
             lock[key].unlock();
     }
  
     public boolean check(int start, int dest) {
-        if (usedLock)
-            lock[start].lock();
-        boolean ret = source[start];
-        if (usedLock)
-            lock[start].unlock();
-        if (!ret) return false;
+        int small = Math.min(start, dest);
+        int large = Math.max(start, dest);
         
+        //System.out.println(small + " " + large);
+        if (usedLock) {
+            lock[small].lock();
+            if (small != large) lock[large].lock();
+        }
+        boolean ret = source[start];
+        if (!ret) {
+            if (usedLock) {
+                lock[small].unlock();
+                if (small != large) lock[large].unlock();
+            }
+            return false;
+        }
+       
+        /*
         if (usedLock)
             lock[dest].lock();
         if (SkipListUsed)
@@ -235,10 +255,49 @@ class ParallelLookUpTable implements LookUpTable {
             ret = tree[dest].find(start);
         if (usedLock)
             lock[dest].unlock();
+        */
+        
+        if (cache) {
+            Boolean hashAns = hash[dest].get(start);
 
-        return ret;
+            if (hashAns != null) {            
+                if (usedLock) {
+                    lock[small].unlock();
+                    if (small != large) lock[large].unlock();
+                }
+
+                return hashAns;            
+            }
+            
+            ret = list[dest].check(start);
+            hash[dest].put(start, ret);
+
+            if (usedLock) {
+                lock[small].unlock();
+                if (small != large) lock[large].unlock();
+            }
+
+            return ret;
+
+        } else {
+            ret = list[dest].check(start);
+            if (ret) {
+                if (usedLock) {
+                    lock[small].unlock();
+                    if (small != large) lock[large].unlock();
+                }
+                return true;
+            }
+
+            ret = list[dest].check(start);
+
+            if (usedLock) {
+                lock[small].unlock();
+                if (small != large) lock[large].unlock();
+            }
+            return ret;
+        }
     }
-
 
     public void debug() {
     }

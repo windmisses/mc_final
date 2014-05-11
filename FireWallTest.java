@@ -156,7 +156,7 @@ class ParallelFireWall {
     for (int i = 0; i < numWorkers; i++) {
         totalCount -= workerDatas[i].totalPackets;
         if (!spm)
-            System.out.println(" Thread " + i + " work : " + workerDatas[i].checkOK + "/" + workerDatas[i].totalPackets);
+            System.out.println(" Thread " + i + " work : " + workerDatas[i].checkOK + "/" + workerDatas[i].totalWorkPackets);
     }
 
     if (totalCount != 0) {

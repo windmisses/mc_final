@@ -11,6 +11,7 @@ class SerialPacketWorker implements PacketWorker {
     final SerialLookUpTable table;
     final Histogram histogram;
     long totalPackets = 0;
+    long totalWorkPackets = 0;
     long residue = 0;
     long checkOK = 0;
     Fingerprint fingerprint;
@@ -42,7 +43,8 @@ class SerialPacketWorker implements PacketWorker {
             } else {
                 int src = pkt.header.source;
                 int des = pkt.header.dest;
-
+                totalWorkPackets++;
+                
                 if (table.check(src, des)) {
                     checkOK++;
                     int ret = (int)fingerprint.getFingerprint(pkt.body.iterations, pkt.body.seed);
@@ -56,10 +58,11 @@ class SerialPacketWorker implements PacketWorker {
 
 class ParallelPacketWorker implements PacketWorker {
     PaddedPrimitiveNonVolatile<Boolean> done;
-    LookUpTable table;
+    ParallelLookUpTable table;
     LamportQueue<Packet> queue;
     Histogram histogram;
     long totalPackets = 0;
+    long totalWorkPackets = 0;
     long residue = 0;
     long checkOK = 0;
     Fingerprint fingerprint;
@@ -74,7 +77,7 @@ class ParallelPacketWorker implements PacketWorker {
             boolean spm
     	    ) {
         this.done = done;
-        this.table = table;
+        this.table = (ParallelLookUpTable)table;
         this.queue = queue;
         this.histogram = histogram;
         this.specialMode = spm;
@@ -84,6 +87,7 @@ class ParallelPacketWorker implements PacketWorker {
   
     public void run() {
         Packet pkt;
+
         while( !done.value || !queue.empty() ) {
     	    try {
                 pkt = queue.deq();
@@ -97,8 +101,8 @@ class ParallelPacketWorker implements PacketWorker {
                     } else {
                         int src = pkt.header.source;
                         int des = pkt.header.dest;
-                        
-                        //table.check(src,des);
+                        totalWorkPackets++;
+
                         if (table.check(src, des)) {
                             checkOK++;
                             int ret = (int)fingerprint.getFingerprint(pkt.body.iterations, pkt.body.seed);
@@ -110,6 +114,7 @@ class ParallelPacketWorker implements PacketWorker {
                     if (pkt.type == Packet.MessageType.ConfigPacket)
                         System.out.println("error!");
 
+                    totalWorkPackets++;
                     int ret = (int)fingerprint.getFingerprint(pkt.body.iterations, pkt.body.seed);
                     residue += ret;
                     //histogram.insert(ret);
