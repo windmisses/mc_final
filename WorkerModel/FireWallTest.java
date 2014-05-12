@@ -27,9 +27,7 @@ class SerialFireWall {
         
         Config config = pkt.config;
         int address = config.address;
-        //System.out.println(address + " " + config.addressBegin + " " + config.addressEnd + " " + config.personaNonGrata + " " + config.acceptingRange);
         table.change(address, config.addressBegin, config.addressEnd, config.personaNonGrata, config.acceptingRange);
-        //System.out.println(i);
     }
 
     // end prepare
@@ -74,8 +72,6 @@ class ParallelFireWall {
     int numWorkers = Integer.parseInt(args[11]); 
 
     final int queueDepth = 256 / numWorkers;
-    //final int queueDepth = 8;
-    final boolean spm = false;
 
     StopWatch timer = new StopWatch();
     PacketGenerator source = new PacketGenerator(numAddressesLog, numTrainsLog, meanTrainSize, meanTrainsPerComm, meanWindow,
@@ -90,13 +86,7 @@ class ParallelFireWall {
     PaddedPrimitive<Boolean> memFence = new PaddedPrimitive<Boolean>(false);
    
     // prepare
-    LookUpTable table;
-    if (!spm) {
-        table = new ParallelLookUpTable(numAddressesLog);
-    } else {
-        table = new SerialLookUpTable(numAddressesLog);
-        numWorkers--;
-    }
+    ParallelLookUpTable table = new ParallelLookUpTable(numAddressesLog);
     Histogram histogram = new Histogram();
 
     for (int i = 0; i < (1 << (numAddressesLog / 2 * 3)); i++) {
@@ -104,17 +94,16 @@ class ParallelFireWall {
         
         Config config = pkt.config;
         int address = config.address;
-        //System.out.println(address);
         table.change(address, config.addressBegin, config.addressEnd, config.personaNonGrata, config.acceptingRange);
     }
     System.out.println("End initialization");
     // end prepare
 
-    ParallelPacketDispatcher dispatcher = new ParallelPacketDispatcher(done, source, numWorkers, queue, table, histogram, spm);
+    ParallelPacketDispatcher dispatcher = new ParallelPacketDispatcher(done, source, numWorkers, queue, table, histogram);
     ParallelPacketWorker[] workerDatas = new ParallelPacketWorker[numWorkers];
 
     for (int i = 0; i < numWorkers; i++) {
-        workerDatas[i] = new ParallelPacketWorker(doneWork, table, queue[i], histogram, spm);
+        workerDatas[i] = new ParallelPacketWorker(doneWork, table, queue[i], histogram);
     }
 
     Thread[] workerThread = new Thread[numWorkers];
@@ -149,14 +138,9 @@ class ParallelFireWall {
     System.out.print("count " + totalCount);
     System.out.println(" time " + timer.getElapsedTime());
 
-    if (spm) {
-        totalCount -= dispatcher.numPackets;
-        System.out.println(" work : " + dispatcher.checkOK + "/" + dispatcher.totalPackets);
-    }
     for (int i = 0; i < numWorkers; i++) {
         totalCount -= workerDatas[i].totalPackets;
-        if (!spm)
-            System.out.println(" Thread " + i + " work : " + workerDatas[i].checkOK + "/" + workerDatas[i].totalWorkPackets + " EmptyCount: " + workerDatas[i].emptyCount);
+        System.out.println(" Thread " + i + " work : " + workerDatas[i].checkOK + "/" + workerDatas[i].totalWorkPackets + " EmptyCount: " + workerDatas[i].emptyCount);
     }
 
     if (totalCount != 0) {

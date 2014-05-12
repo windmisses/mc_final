@@ -68,20 +68,16 @@ class ParallelPacketWorker implements PacketWorker {
     long checkOK = 0;
     Fingerprint fingerprint;
 
-    boolean specialMode = false;
-
     public ParallelPacketWorker(  		
   	    PaddedPrimitiveNonVolatile<Boolean> done, 
     	    LookUpTable table,
     	    LamportQueue<Packet> queue,
-            Histogram histogram,
-            boolean spm
+            Histogram histogram
     	    ) {
         this.done = done;
         this.table = (ParallelLookUpTable)table;
         this.queue = queue;
         this.histogram = histogram;
-        this.specialMode = spm;
 
         fingerprint = new Fingerprint();
     }
@@ -95,38 +91,28 @@ class ParallelPacketWorker implements PacketWorker {
                 pkt = queue.deq();
                 totalPackets++;
                 
-                if (!specialMode) {
-                    if (pkt.type == Packet.MessageType.ConfigPacket) {                                        
-                        Config config = pkt.config;
-                        int address = config.address;
-                        table.change(address, config.addressBegin, config.addressEnd, config.personaNonGrata, config.acceptingRange);
-                    } else {
-                        int src = pkt.header.source;
-                        int des = pkt.header.dest;
-                        totalWorkPackets++;
-                        //table.check(src,des);
-                        
-                        //if (true) {
-                        if (table.check(src, des)) {
-                            checkOK++;
-                            int ret = (int)fingerprint.getFingerprint(pkt.body.iterations, pkt.body.seed);
-                            residue += ret;
-                            //histogram.insert(ret);
-                        }
-                        
-                    }
-                } else {                    
-                    if (pkt.type == Packet.MessageType.ConfigPacket)
-                        System.out.println("error!");
-
+                if (pkt.type == Packet.MessageType.ConfigPacket) {                                        
+                    Config config = pkt.config;
+                    int address = config.address;
+                    table.change(address, config.addressBegin, config.addressEnd, config.personaNonGrata, config.acceptingRange);
+                } else {
+                    int src = pkt.header.source;
+                    int des = pkt.header.dest;
                     totalWorkPackets++;
-                    int ret = (int)fingerprint.getFingerprint(pkt.body.iterations, pkt.body.seed);
-                    residue += ret;
-                    //histogram.insert(ret);
+                    //table.check(src,des);
+                        
+                    //if (true) {
+                    if (table.check(src, des)) {
+                        checkOK++;
+                        int ret = (int)fingerprint.getFingerprint(pkt.body.iterations, pkt.body.seed);
+                        residue += ret;
+                        //histogram.insert(ret);
+                    }                        
                 }
     	    } catch (EmptyException e) {
                 emptyCount++;
             }
-    }    
-  }  
+        }    
+    }
+    
 }
