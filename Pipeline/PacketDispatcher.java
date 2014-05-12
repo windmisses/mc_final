@@ -7,32 +7,20 @@ class ParallelPacketDispatcher implements PacketDispatcher {
     final PacketGenerator source;
     final int numWorkers;
     LamportQueue<Packet> queue[];
-    LookUpTable table;
-    Histogram histogram;
-    Fingerprint fingerprint;
 
-    public long residue = 0;
     public int totalPackets = 0;
-    public int numPackets = 0;
-    public int checkOK = 0;
 
     public ParallelPacketDispatcher(
             PaddedPrimitiveNonVolatile<Boolean> done, 
             PacketGenerator source,
             int numWorkers,
-            LamportQueue<Packet>[] queue,
-            LookUpTable table,
-            Histogram histogram
+            LamportQueue<Packet>[] queue
             ) {
     
         this.done = done;
         this.source = source;
         this.numWorkers = numWorkers;
         this.queue = queue;
-        this.table = table;
-        this.histogram = histogram;
-
-        fingerprint = new Fingerprint();
     }
   
     public void run() {

@@ -56,35 +56,34 @@ class SerialPacketWorker implements PacketWorker {
     }   
 }
 
-class ParallelPacketWorker implements PacketWorker {
+class ConfigWorker implements PacketWorker {
     PaddedPrimitiveNonVolatile<Boolean> done;
     ParallelLookUpTable table;
     LamportQueue<Packet> queue;
-    Histogram histogram;
+    LamportQueue<Packet>[] sendQueue;
     long totalPackets = 0;
     long totalWorkPackets = 0;
     long emptyCount = 0;
-    long residue = 0;
     long checkOK = 0;
-    Fingerprint fingerprint;
+    int numWorkers;
 
-    public ParallelPacketWorker(  		
+    public ConfigWorker(  		
   	    PaddedPrimitiveNonVolatile<Boolean> done, 
     	    LookUpTable table,
+            int numWorkers, 
     	    LamportQueue<Packet> queue,
-            Histogram histogram
+            LamportQueue<Packet>[] sendQueue
     	    ) {
         this.done = done;
         this.table = (ParallelLookUpTable)table;
+        this.numWorkers = numWorkers;
         this.queue = queue;
-        this.histogram = histogram;
-
-        fingerprint = new Fingerprint();
+        this.sendQueue = sendQueue;
     }
   
     public void run() {
         Packet pkt;
-
+        int id = 0;
         //while( !done.value || !queue.empty() ) {
         while (!done.value) {
     	    try {
@@ -99,16 +98,68 @@ class ParallelPacketWorker implements PacketWorker {
                     int src = pkt.header.source;
                     int des = pkt.header.dest;
                     totalWorkPackets++;
-                    //table.check(src,des);
                         
-                    //if (true) {
                     if (table.check(src, des)) {
                         checkOK++;
-                        int ret = (int)fingerprint.getFingerprint(pkt.body.iterations, pkt.body.seed);
-                        residue += ret;
-                        //histogram.insert(ret);
+                        
+                        while (true) {
+                            try {
+                                id = (id + 1) % numWorkers;
+                                sendQueue[id].enq(pkt);
+                                totalPackets++;
+                                break;
+                            } catch (FullException e) {;}
+                        }  
+
                     }                        
                 }
+    	    } catch (EmptyException e) {
+                emptyCount++;
+            }
+        }    
+    }
+    
+}
+
+
+
+class DataWorker implements PacketWorker {
+    PaddedPrimitiveNonVolatile<Boolean> done;
+    LamportQueue<Packet> queue;
+    Histogram histogram;
+    long totalPackets = 0;
+    long emptyCount = 0;
+
+    long residue = 0;
+    Fingerprint fingerprint;
+
+    public DataWorker(  		
+  	    PaddedPrimitiveNonVolatile<Boolean> done, 
+    	    LamportQueue<Packet> queue,
+            Histogram histogram
+    	    ) {
+        this.done = done;
+        this.queue = queue;
+        this.histogram = histogram;
+
+        fingerprint = new Fingerprint();
+    }
+  
+    public void run() {
+        Packet pkt;
+        int id = 0;
+        //while( !done.value || !queue.empty() ) {
+        while (!done.value) {
+    	    try {                
+                pkt = queue.deq();
+                totalPackets++;
+
+                if (pkt.type != Packet.MessageType.DataPacket)
+                    System.out.println("error!");
+
+                int ret = (int)fingerprint.getFingerprint(pkt.body.iterations, pkt.body.seed);
+                residue += ret;
+                //histogram.insert(ret);                
     	    } catch (EmptyException e) {
                 emptyCount++;
             }

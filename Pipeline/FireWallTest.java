@@ -71,15 +71,18 @@ class ParallelFireWall {
     final float acceptingFraction = Float.parseFloat(args[10]);
     int numWorkers = Integer.parseInt(args[11]); 
 
-    final int queueDepth = 256 / numWorkers;
+    
+    final int configThread = 2; 
+    final int queueDepth = 256 / configThread;
+    final int dataThreadPer = (numWorkers - configThread) / configThread;
 
     StopWatch timer = new StopWatch();
     PacketGenerator source = new PacketGenerator(numAddressesLog, numTrainsLog, meanTrainSize, meanTrainsPerComm, meanWindow,
                                     meanCommPerAddress, meanWork, configFraction, pngFraction, acceptingFraction);
 
-    LamportQueue<Packet>[] queue = new LamportQueue[numWorkers];
-    for (int i = 0; i < numWorkers; i++) 
-        queue[i] = new LamportQueue<Packet>(queueDepth);
+    LamportQueue<Packet>[] configQueue = new LamportQueue[numWorkers];
+    for (int i = 0; i < configThread; i++) 
+        configQueue[i] = new LamportQueue<Packet>(queueDepth);
     
     PaddedPrimitiveNonVolatile<Boolean> done = new PaddedPrimitiveNonVolatile<Boolean>(false);
     PaddedPrimitiveNonVolatile<Boolean> doneWork = new PaddedPrimitiveNonVolatile<Boolean>(false);
@@ -99,18 +102,35 @@ class ParallelFireWall {
     System.out.println("End initialization");
     // end prepare
 
-    ParallelPacketDispatcher dispatcher = new ParallelPacketDispatcher(done, source, numWorkers, queue, table, histogram);
-    ParallelPacketWorker[] workerDatas = new ParallelPacketWorker[numWorkers];
+    ParallelPacketDispatcher dispatcher = new ParallelPacketDispatcher(done, source, configThread, configQueue);
 
-    for (int i = 0; i < numWorkers; i++) {
-        workerDatas[i] = new ParallelPacketWorker(doneWork, table, queue[i], histogram);
+
+    ConfigWorker[] configDatas = new ConfigWorker[configThread];
+    DataWorker[][] dataDatas = new DataWorker[configThread][dataThreadPer];
+
+    for (int i = 0; i < configThread; i++) {
+        LamportQueue<Packet>[] dataQueue = new LamportQueue[dataThreadPer];
+        for (int j = 0; j < dataThreadPer; j++)
+            dataQueue[j] = new LamportQueue<Packet>(queueDepth);
+
+        configDatas[i] = new ConfigWorker(doneWork, table, dataThreadPer, configQueue[i], dataQueue);
+
+        for (int j = 0; j < dataThreadPer; j++)
+            dataDatas[i][j] = new DataWorker(doneWork, dataQueue[j], histogram);
     }
 
     Thread[] workerThread = new Thread[numWorkers];
-    for (int i = 0; i < numWorkers; i++) {
-        workerThread[i] = new Thread(workerDatas[i]);
+    for (int i = 0; i < configThread; i++) {
+        workerThread[i] = new Thread(configDatas[i]);
         workerThread[i].start();
     }
+    int k = configThread;
+    for (int i = 0; i < configThread; i++) 
+        for (int j = 0; j < dataThreadPer; j++) {
+            workerThread[k] = new Thread(dataDatas[i][j]);
+            workerThread[k].start();
+            k++;
+        }
 
     Thread dispatcherThread = new Thread(dispatcher);
     timer.startTimer();
@@ -138,13 +158,17 @@ class ParallelFireWall {
     System.out.print("count " + totalCount);
     System.out.println(" time " + timer.getElapsedTime());
 
-    for (int i = 0; i < numWorkers; i++) {
-        totalCount -= workerDatas[i].totalPackets;
-        System.out.println(" Thread " + i + " work : " + workerDatas[i].checkOK + "/" + workerDatas[i].totalWorkPackets + " EmptyCount: " + workerDatas[i].emptyCount);
+    for (int i = 0; i < configThread; i++) {
     }
 
-    if (totalCount != 0) {
-        System.out.println("check failure: " + timer.getElapsedTime());    
+    for (int i = 0; i < configThread; i++)  {
+        System.out.println(" Thread " + i + " work : " + configDatas[i].checkOK + "/" 
+                            + configDatas[i].totalWorkPackets + " EmptyCount: " + configDatas[i].emptyCount);
+
+        for (int j = 0; j < dataThreadPer; j++) 
+            System.out.println("      Thread " + j + " work : " + dataDatas[i][j].totalPackets 
+                                + " EmptyCount: " + dataDatas[i][j].emptyCount);
     }
+
   }
 }
