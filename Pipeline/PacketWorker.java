@@ -63,9 +63,14 @@ class ConfigWorker implements PacketWorker {
     LamportQueue<Packet>[] sendQueue;
     long totalPackets = 0;
     long totalWorkPackets = 0;
+    long totalWork = 0;
     long emptyCount = 0;
+    long fullCount = 0;
     long checkOK = 0;
     int numWorkers;
+
+    long residue = 0;    
+    Fingerprint fingerprint;
 
     public ConfigWorker(  		
   	    PaddedPrimitiveNonVolatile<Boolean> done, 
@@ -79,11 +84,13 @@ class ConfigWorker implements PacketWorker {
         this.numWorkers = numWorkers;
         this.queue = queue;
         this.sendQueue = sendQueue;
+
+        fingerprint = new Fingerprint();
     }
   
     public void run() {
         Packet pkt;
-        int id = 0;
+        int id = -1;
         //while( !done.value || !queue.empty() ) {
         while (!done.value) {
     	    try {
@@ -97,20 +104,40 @@ class ConfigWorker implements PacketWorker {
                 } else {
                     int src = pkt.header.source;
                     int des = pkt.header.dest;
-                    totalWorkPackets++;
+                    totalWorkPackets++;                    
                         
                     if (table.check(src, des)) {
                         checkOK++;
                         
-                        while (true) {
-                            try {
-                                id = (id + 1) % numWorkers;
-                                sendQueue[id].enq(pkt);
-                                totalPackets++;
-                                break;
-                            } catch (FullException e) {;}
-                        }  
+                        if (false) {
+                        //if (checkOK % (1 * (numWorkers + 1)) == 0) {
+                            totalWork++;
+                            int ret = (int)fingerprint.getFingerprint(pkt.body.iterations, pkt.body.seed);
+                            residue += ret;                                                
+                        } else {
+                            //id = (id + 1) % (numWorkers);                               
+                            boolean ok = true;
+                            while (ok) {
+                                try {
+                                    id = (id + 1) % numWorkers;                               
+                                /*
+                                if (id == numWorkers) {
+                                    id = -1;
+                                    totalWork++;
+                                    int ret = (int)fingerprint.getFingerprint(pkt.body.iterations, pkt.body.seed);
+                                    residue += ret;                    
+                                    break;
+                                }
+                                */
 
+                                    sendQueue[id].enq(pkt);
+                                    totalPackets++;
+                                    ok = false;
+                                } catch (FullException e) {
+                                    fullCount++;
+                                }
+                            }  
+                        }                       
                     }                        
                 }
     	    } catch (EmptyException e) {

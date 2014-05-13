@@ -7,6 +7,7 @@ class ParallelPacketDispatcher implements PacketDispatcher {
     final PacketGenerator source;
     final int numWorkers;
     LamportQueue<Packet> queue[];
+    long fullCount = 0;
 
     public int totalPackets = 0;
 
@@ -46,7 +47,9 @@ class ParallelPacketDispatcher implements PacketDispatcher {
                     queue[id].enq(pkt);
                     totalPackets++;
                     break;
-                } catch (FullException e) {;}
+                } catch (FullException e) {
+                    fullCount++;
+                }
             }             
         }
     }  

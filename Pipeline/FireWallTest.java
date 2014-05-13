@@ -72,7 +72,9 @@ class ParallelFireWall {
     int numWorkers = Integer.parseInt(args[11]); 
 
     
-    final int configThread = 2; 
+    int configThread = 2; 
+    if (args.length > 12)
+        configThread = Integer.parseInt(args[12]); 
     final int queueDepth = 256 / configThread;
     final int dataThreadPer = (numWorkers - configThread) / configThread;
 
@@ -136,6 +138,8 @@ class ParallelFireWall {
     timer.startTimer();
     dispatcherThread.start();
 
+    System.out.println("start");
+
     try {
       Thread.sleep(numMilliseconds);
     } catch (InterruptedException ignore) {;}
@@ -144,6 +148,7 @@ class ParallelFireWall {
     try {
         dispatcherThread.join();
     } catch (InterruptedException ignore) {;}
+    System.out.println("dispatcher end");
 
     doneWork.value = true;
     memFence.value = false;
@@ -151,23 +156,23 @@ class ParallelFireWall {
         try {
             workerThread[i].join();
         } catch (InterruptedException ignore) {;}
+        System.out.println("worker :" + i + " end");
     }
     timer.stopTimer();
 
     long totalCount = dispatcher.totalPackets;
     System.out.print("count " + totalCount);
-    System.out.println(" time " + timer.getElapsedTime());
+    System.out.print(" time " + timer.getElapsedTime());
+    System.out.println(" throughput " + totalCount / timer.getElapsedTime());
 
-    for (int i = 0; i < configThread; i++) {
-    }
-
+    System.out.println("FullCount Dispatcher:" + dispatcher.fullCount);
     for (int i = 0; i < configThread; i++)  {
-        System.out.println(" Thread " + i + " work : " + configDatas[i].checkOK + "/" 
-                            + configDatas[i].totalWorkPackets + " EmptyCount: " + configDatas[i].emptyCount);
+        System.out.println(" Thread " + i + " work : " + configDatas[i].totalWork + " accepted: " + configDatas[i].checkOK + "/" 
+                            + configDatas[i].totalWorkPackets + " EmptyCount: " + (double)configDatas[i].emptyCount / 1000000 + " FullCount: " + configDatas[i].fullCount);
 
         for (int j = 0; j < dataThreadPer; j++) 
             System.out.println("      Thread " + j + " work : " + dataDatas[i][j].totalPackets 
-                                + " EmptyCount: " + dataDatas[i][j].emptyCount);
+                                + " EmptyCount: " + (double)dataDatas[i][j].emptyCount / 1000000);
     }
 
   }
