@@ -1,5 +1,4 @@
 import java.util.Random;
-import org.deuce.Atomic;
 import java.util.concurrent.*;
 import java.util.concurrent.locks.*;
 
@@ -93,7 +92,6 @@ public class SegmentList {
 		// }
 	}
 
-	@Atomic
 	/* change interval of form [a, b) */
 	public void add(int l_int, int r_int, boolean create_seg) {
 		/* make the interval in the right shape */

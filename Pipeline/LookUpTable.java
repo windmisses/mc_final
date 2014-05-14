@@ -2,7 +2,6 @@ import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.*;
 import java.util.concurrent.locks.*;
-import org.deuce.Atomic;
 
 public interface LookUpTable {
     public void change(int address, int start, int end, boolean validSource, boolean acceptingRange);
@@ -82,7 +81,7 @@ class ParallelLookUpTable implements LookUpTable {
     
     boolean SkipListUsed = true;
     boolean usedLock = true;
-    boolean cache = true;
+    boolean cache = false;
 
     ThreadLocal<Integer> lockCount;
 
@@ -132,7 +131,6 @@ class ParallelLookUpTable implements LookUpTable {
     }
     
 
-    @Atomic
     public void change(int address, int start, int end, boolean validSource, boolean acceptingRange) {
         int key = address;
         
