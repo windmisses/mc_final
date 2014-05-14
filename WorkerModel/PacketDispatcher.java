@@ -10,6 +10,7 @@ class ParallelPacketDispatcher implements PacketDispatcher {
     LookUpTable table;
     Histogram histogram;
     Fingerprint fingerprint;
+    long fullCount = 0;
 
     public long residue = 0;
     public int totalPackets = 0;
@@ -58,7 +59,9 @@ class ParallelPacketDispatcher implements PacketDispatcher {
                     queue[id].enq(pkt);
                     totalPackets++;
                     break;
-                } catch (FullException e) {;}
+                } catch (FullException e) {
+                    fullCount++;
+                }
             }             
         }
     }  

@@ -21,17 +21,22 @@ class SerialLookUpTable implements LookUpTable {
     boolean[][] table;
     int count;
     int n;
+
+    HashMap<Integer, Boolean>[] hash;
     
     public SerialLookUpTable(int numAddressesLog) {
-        SkipList_Max_Level = numAddressesLog / 2;
+        SkipList_Max_Level = 5;
 
         n = 1 << numAddressesLog;
         source = new boolean[n];
         list = new SkipList[n];
+        hash = new HashMap[n];
 
         for (int i = 0; i < n; i++) {
             list[i] = new SkipList(SkipList_Max_Level);
-            source[i] = false;
+            list[i].change(0, n - 1, true);
+            source[i] = true;
+            hash[i] = new HashMap<Integer, Boolean>();
         }
     }
 
@@ -44,12 +49,22 @@ class SerialLookUpTable implements LookUpTable {
             source[key] = false;
         
         list[key].change(start, end - 1, acceptingRange);
+        hash[key] = new HashMap<Integer, Boolean>();
     }
    
 
     public boolean check(int start, int dest) {
         if (!source[start]) return false;
-        return list[dest].check(start);
+
+        Boolean hashAns = hash[dest].get(start);
+
+        if (hashAns != null)
+            return hashAns;                
+            
+        boolean ret = list[dest].check(start);
+        hash[dest].put(start, ret);
+        
+        return ret;
     }
 
     public void debug() {}
@@ -68,6 +83,8 @@ class ParallelLookUpTable implements LookUpTable {
     boolean SkipListUsed = true;
     boolean usedLock = true;
     boolean cache = true;
+
+    ThreadLocal<Integer> lockCount;
 
     ConcurrentHashMap<Integer, Boolean>[] hash;
 
@@ -88,19 +105,39 @@ class ParallelLookUpTable implements LookUpTable {
                 list[i] = new SkipList(SkipList_Max_Level);
                 //list[i] = new SegmentList(SkipList_Max_Level, 32);
             }
+            list[i].change(0, n - 1, true);
 
-            source[i] = false;
+            source[i] = true;
             lock[i] = new ReentrantLock();
             hash[i] = new ConcurrentHashMap<Integer, Boolean>();
         }
+
+        lockCount = new ThreadLocal<Integer>() {
+            protected Integer initialValue() {
+                return 0;
+            }
+        };
+    }
+
+    void trylock(int key) {
+        if (!lock[key].tryLock()) {
+            int tmp = lockCount.get();
+            lockCount.set(tmp + 1);
+            lock[key].lock();
+        }        
+    }
+
+    public int getlockCount() {
+        return lockCount.get();
     }
     
+
     @Atomic
     public void change(int address, int start, int end, boolean validSource, boolean acceptingRange) {
         int key = address;
         
         if (usedLock)
-            lock[key].lock();
+            trylock(key);
 
         if (!validSource) 
             source[key] = true;
@@ -120,8 +157,9 @@ class ParallelLookUpTable implements LookUpTable {
 
     void orderLock(int small, int large) {        
         if (usedLock) {
-            lock[small].lock();
-            if (small != large) lock[large].lock();
+            trylock(small);
+            if (small != large) 
+                trylock(large);
         }
     }
 

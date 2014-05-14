@@ -139,6 +139,8 @@ class ParallelFireWall {
     System.out.print(" time " + timer.getElapsedTime());
     System.out.println(" throughput " + totalCount / timer.getElapsedTime());
 
+    System.out.println(" Dispatcher fullCount: " + dispatcher.fullCount);
+
     for (int i = 0; i < numWorkers; i++) {
         totalCount -= workerDatas[i].totalPackets;
         System.out.println(" Thread " + i + " work : " + workerDatas[i].checkOK + "/" + workerDatas[i].totalWorkPackets + " EmptyCount: " + workerDatas[i].emptyCount);

@@ -69,7 +69,11 @@ class ConfigWorker implements PacketWorker {
     long checkOK = 0;
     int numWorkers;
 
+    int lockCount = 0;
+
     long residue = 0;    
+    int test = 0;
+    Histogram histogram;
     Fingerprint fingerprint;
 
     public ConfigWorker(  		
@@ -77,26 +81,41 @@ class ConfigWorker implements PacketWorker {
     	    LookUpTable table,
             int numWorkers, 
     	    LamportQueue<Packet> queue,
-            LamportQueue<Packet>[] sendQueue
+            LamportQueue<Packet>[] sendQueue,
+            Histogram histogram,
+            int dptest
     	    ) {
         this.done = done;
         this.table = (ParallelLookUpTable)table;
         this.numWorkers = numWorkers;
         this.queue = queue;
         this.sendQueue = sendQueue;
+        this.histogram = histogram;
+        this.test = dptest;
 
         fingerprint = new Fingerprint();
     }
   
     public void run() {
-        Packet pkt;
+        Packet pkt = null;
         int id = -1;
-        //while( !done.value || !queue.empty() ) {
-        while (!done.value) {
-    	    try {
-                pkt = queue.deq();
-                totalPackets++;
+        while( !done.value || !queue.empty() ) {
+        //while (!done.value) {
+            if (queue.empty())
+                emptyCount++;
+            boolean flag = false;
+            while (!flag) {
+        	try {
+                    pkt = queue.deq();
+                    totalPackets++;
+                    flag = true;
+    	        } catch (EmptyException e) {;}
+
+                if (done.value) break;
+            }
+            if (!flag) break;
                 
+            if (test == 0) {
                 if (pkt.type == Packet.MessageType.ConfigPacket) {                                        
                     Config config = pkt.config;
                     int address = config.address;
@@ -105,45 +124,39 @@ class ConfigWorker implements PacketWorker {
                     int src = pkt.header.source;
                     int des = pkt.header.dest;
                     totalWorkPackets++;                    
-                        
+                       
+                    
                     if (table.check(src, des)) {
                         checkOK++;
                         
-                        if (false) {
-                        //if (checkOK % (1 * (numWorkers + 1)) == 0) {
-                            totalWork++;
-                            int ret = (int)fingerprint.getFingerprint(pkt.body.iterations, pkt.body.seed);
-                            residue += ret;                                                
-                        } else {
-                            //id = (id + 1) % (numWorkers);                               
+                        if (numWorkers != 0) {
                             boolean ok = true;
                             while (ok) {
-                                try {
-                                    id = (id + 1) % numWorkers;                               
-                                /*
-                                if (id == numWorkers) {
-                                    id = -1;
-                                    totalWork++;
-                                    int ret = (int)fingerprint.getFingerprint(pkt.body.iterations, pkt.body.seed);
-                                    residue += ret;                    
-                                    break;
-                                }
-                                */
+                                //try {
+                                    id = (id + 1) % numWorkers;
+                                    if (sendQueue[id].full()) {
+                                        fullCount++;
+                                        continue;
+                                    }
 
                                     sendQueue[id].enq(pkt);
                                     totalPackets++;
                                     ok = false;
-                                } catch (FullException e) {
-                                    fullCount++;
-                                }
+                                //} catch (FullException e) {
+                                //    fullCount++;
+                                //}
                             }  
-                        }                       
+                        } else {
+                            totalWork++;
+                            int ret = (int)fingerprint.getFingerprint(pkt.body.iterations, pkt.body.seed);
+                            residue += ret;
+                            //histogram.insert(ret);                
+                        }
                     }                        
-                }
-    	    } catch (EmptyException e) {
-                emptyCount++;
+                }   
             }
-        }    
+        }   
+        this.lockCount = table.getlockCount();
     }
     
 }
@@ -173,13 +186,24 @@ class DataWorker implements PacketWorker {
     }
   
     public void run() {
-        Packet pkt;
+        Packet pkt = null;
         int id = 0;
-        //while( !done.value || !queue.empty() ) {
-        while (!done.value) {
-    	    try {                
-                pkt = queue.deq();
-                totalPackets++;
+        while( !done.value || !queue.empty() ) {
+        //while (!done.value) {
+            if (queue.empty())
+                emptyCount++;
+            boolean flag = false;
+            while (!flag) {
+        	try {                
+                    pkt = queue.deq();
+                    totalPackets++;
+                    flag = true;
+    	        } catch (EmptyException e) {;}
+
+                if (done.value) break;
+            }
+            if (!flag) break;
+
 
                 if (pkt.type != Packet.MessageType.DataPacket)
                     System.out.println("error!");
@@ -187,9 +211,6 @@ class DataWorker implements PacketWorker {
                 int ret = (int)fingerprint.getFingerprint(pkt.body.iterations, pkt.body.seed);
                 residue += ret;
                 //histogram.insert(ret);                
-    	    } catch (EmptyException e) {
-                emptyCount++;
-            }
         }    
     }
     

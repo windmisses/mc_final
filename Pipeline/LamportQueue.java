@@ -28,9 +28,10 @@ class LamportQueue<T> {
         return (tail - head == items.length);
     }
 
-    public void enq(T x) throws FullException {
-        if (tail - head == items.length) 
-            throw new FullException();
+    //public void enq(T x) throws FullException {
+    public void enq(T x) {
+        //if (tail - head == items.length) 
+        //    throw new FullException();
 
         items[tail % items.length] = x;
         tail++;        
