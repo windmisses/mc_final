@@ -81,15 +81,15 @@ class ParallelLookUpTable implements LookUpTable {
     
     boolean SkipListUsed = true;
     boolean usedLock = true;
-    boolean cache = false;
+    boolean cache = true;
 
     ThreadLocal<Integer> lockCount;
 
     ConcurrentHashMap<Integer, Boolean>[] hash;
 
     public ParallelLookUpTable(int numAddressesLog) {
-        //SkipList_Max_Level = numAddressesLog / 2;
-        SkipList_Max_Level = 5;
+        SkipList_Max_Level = numAddressesLog / 2;
+        //SkipList_Max_Level = 5;
 
         n = 1 << numAddressesLog;
         source = new boolean[n];
@@ -108,6 +108,8 @@ class ParallelLookUpTable implements LookUpTable {
 
             source[i] = true;
             lock[i] = new ReentrantLock();
+
+
             hash[i] = new ConcurrentHashMap<Integer, Boolean>();
         }
 

@@ -230,11 +230,10 @@ class ParallelFireWall {
             System.out.println("FullCount Dispatcher " + i + ": " + dispatcher[i].fullCount);
     }
     System.out.print("count " + totalCount);
-    System.out.println(" time " + timer.getElapsedTime());
+    System.out.print(" time " + timer.getElapsedTime());
+    System.out.println(" throughput " + totalCount / timer.getElapsedTime());
 
     if (collect == 0) {
-        System.out.println(" throughput " + totalCount / timer.getElapsedTime());
-
         for (int i = 0; i < configThread; i++)  {
             System.out.println(" Thread " + i + " work : " + configDatas[i].totalWork + " accepted: " + configDatas[i].checkOK + "/" 
                             + configDatas[i].totalWorkPackets + " EmptyCount: " + (double)configDatas[i].emptyCount + " FullCount: " + configDatas[i].fullCount

@@ -7,13 +7,13 @@ JC= javac
 
 CLASSES = \
         LamportQueue.java \
+        HashTable.java \
 	PaddedPrimitive.java \
 	StopWatch.java \
 	Fingerprint.java \
 	RandomGenerator.java \
         PacketGenerator.java \
         SegmentTree.java \
-        SegmentList.java \
         SkipList.java \
 	LookUpTable.java \
         Histogram.java \
